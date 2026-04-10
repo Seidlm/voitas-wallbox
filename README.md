@@ -5,6 +5,9 @@
 [![HA Version](https://img.shields.io/badge/Home%20Assistant-2025.1%2B-blue)](https://www.home-assistant.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-seidlm-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/seidlm)
+[![GitHub Stars](https://img.shields.io/github/stars/Seidlm/Voitas-Walbox-HA-Integration?style=flat)](https://github.com/Seidlm/Voitas-Walbox-HA-Integration/stargazers)
+[![GitHub Downloads](https://img.shields.io/github/downloads/Seidlm/Voitas-Walbox-HA-Integration/total?style=flat)](https://github.com/Seidlm/Voitas-Walbox-HA-Integration/releases)
+[![GitHub Issues](https://img.shields.io/github/issues/Seidlm/Voitas-Walbox-HA-Integration?style=flat)](https://github.com/Seidlm/Voitas-Walbox-HA-Integration/issues)
 
 Local Home Assistant integration for the **Voitas V11 Wallbox** EV charger.
 

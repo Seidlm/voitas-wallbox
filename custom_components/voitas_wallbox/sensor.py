@@ -40,8 +40,9 @@ async def async_setup_entry(
     status_sensor = VoitasStatusSensor(coordinator, entry)
     power_sensor = VoitasPowerSensor(coordinator, entry, power_source, power_value, power_entity)
     energy_sensor = VoitasEnergySensor(coordinator, entry, power_sensor)
+    duration_sensor = VoitasSessionDurationSensor(coordinator, entry)
 
-    async_add_entities([status_sensor, power_sensor, energy_sensor])
+    async_add_entities([status_sensor, power_sensor, energy_sensor, duration_sensor])
 
 
 class VoitasStatusSensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEntity):
@@ -141,6 +142,54 @@ class VoitasPowerSensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEntit
             return self._entity_power or 0.0
         else:
             return self._power_value
+
+    @property
+    def available(self):
+        return self.coordinator.current_data.available
+
+
+class VoitasSessionDurationSensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEntity):
+    """Sensor for current charging session duration in minutes."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Session Duration"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "min"
+    _attr_icon = "mdi:timer"
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_session_duration"
+        self._session_start: dt_util.dt.datetime | None = None
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry.entry_id)},
+            "name": f"Voitas Wallbox ({coordinator.host})",
+            "manufacturer": "Voitas Innovations",
+            "model": "V11",
+        }
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        status = self.coordinator.current_data.status
+        if status == STATUS_CHARGING:
+            if self._session_start is None:
+                self._session_start = dt_util.utcnow()
+        else:
+            self._session_start = None
+        self.async_write_ha_state()
+
+    @property
+    def native_value(self) -> float:
+        if self._session_start is None:
+            return 0
+        elapsed = (dt_util.utcnow() - self._session_start).total_seconds() / 60
+        return round(elapsed, 1)
+
+    @property
+    def extra_state_attributes(self):
+        if self._session_start is None:
+            return {"session_start": None}
+        return {"session_start": self._session_start.isoformat()}
 
     @property
     def available(self):

@@ -11,7 +11,7 @@ from homeassistant.const import UnitOfPower, UnitOfEnergy
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
-from homeassistant.helpers.restore_state import RestoreEntity, ExtraStoredData
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 import homeassistant.util.dt as dt_util
 
@@ -197,38 +197,16 @@ class VoitasEnergySensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEnti
         return _device_info(self.coordinator, self._entry)
 
     async def async_added_to_hass(self) -> None:
-        """Restore last known energy value after HA restart (Fix #3)."""
+        """Restore last known energy value after HA restart."""
         await super().async_added_to_hass()
-
-        # Try extra_restore_state_data first (Fix #10 — more reliable)
-        if (extra := await self.async_get_last_extra_data()) is not None:
-            try:
-                self._energy_kwh = float(extra.as_dict().get("energy_kwh", 0.0))
-                _LOGGER.debug("Voitas: restored energy from extra data: %.4f kWh", self._energy_kwh)
-            except (ValueError, TypeError, AttributeError):
-                pass
-        elif (last_state := await self.async_get_last_state()) is not None:
-            # Fallback to state value
-            if last_state.state not in ("unknown", "unavailable", "None"):
+        if (last_state := await self.async_get_last_state()) is not None:
+            if last_state.state not in ("unknown", "unavailable", "None", None):
                 try:
                     self._energy_kwh = float(last_state.state)
-                    _LOGGER.debug("Voitas: restored energy from state: %.4f kWh", self._energy_kwh)
+                    _LOGGER.debug("Voitas: restored %.4f kWh", self._energy_kwh)
                 except (ValueError, TypeError):
                     self._energy_kwh = 0.0
-
         self._last_update = dt_util.utcnow()
-
-    @property
-    def extra_restore_state_data(self) -> ExtraStoredData:
-        """Store extra data for reliable restore (Fix #10)."""
-        class _ExtraData(ExtraStoredData):
-            def __init__(self, energy_kwh: float):
-                self._energy_kwh = energy_kwh
-
-            def as_dict(self) -> dict:
-                return {"energy_kwh": self._energy_kwh}
-
-        return _ExtraData(self._energy_kwh)
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -280,31 +258,7 @@ class VoitasSessionDurationSensor(CoordinatorEntity[VoitasWallboxCoordinator], S
         return _device_info(self.coordinator, self._entry)
 
     async def async_added_to_hass(self) -> None:
-        """Restore session start if charging was active before restart (Fix #3)."""
         await super().async_added_to_hass()
-        if (extra := await self.async_get_last_extra_data()) is not None:
-            try:
-                d = extra.as_dict()
-                if d.get("was_charging") and d.get("session_start"):
-                    self._session_start = dt_util.parse_datetime(d["session_start"])
-                    _LOGGER.debug("Voitas: restored session start from extra data")
-            except Exception:
-                pass
-
-    @property
-    def extra_restore_state_data(self) -> ExtraStoredData:
-        class _ExtraData(ExtraStoredData):
-            def __init__(self, session_start, was_charging):
-                self._session_start = session_start
-                self._was_charging = was_charging
-
-            def as_dict(self) -> dict:
-                return {
-                    "was_charging": self._was_charging,
-                    "session_start": self._session_start.isoformat() if self._session_start else None,
-                }
-
-        return _ExtraData(self._session_start, self._session_start is not None)
 
     @callback
     def _handle_coordinator_update(self) -> None:

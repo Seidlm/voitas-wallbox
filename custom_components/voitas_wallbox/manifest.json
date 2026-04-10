@@ -1,0 +1,12 @@
+{
+  "domain": "voitas_wallbox",
+  "name": "Voitas Wallbox",
+  "version": "1.0.0",
+  "documentation": "https://github.com/Seidlm/Voitas-Walbox-HA-Integration",
+  "issue_tracker": "https://github.com/Seidlm/Voitas-Walbox-HA-Integration/issues",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@Seidlm"],
+  "iot_class": "local_push",
+  "config_flow": true
+}

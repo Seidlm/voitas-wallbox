@@ -64,18 +64,15 @@ class VoitasWallboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             host = user_input[CONF_HOST].strip()
             port = user_input.get(CONF_PORT, DEFAULT_PORT)
 
-            # Validate IP
             try:
                 socket.inet_aton(host)
             except socket.error:
                 errors[CONF_HOST] = "invalid_host"
             else:
-                # Test connection
                 ok = await _test_connection(host, port)
                 if not ok:
                     errors["base"] = "cannot_connect"
                 else:
-                    # Store host/port, move to power config
                     self._host = host
                     self._port = port
                     return await self.async_step_power()
@@ -87,13 +84,10 @@ class VoitasWallboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_PORT, default=DEFAULT_PORT): int,
             }),
             errors=errors,
-            description_placeholders={"port": str(DEFAULT_PORT)},
         )
 
     async def async_step_power(self, user_input=None):
         """Step 1 of power config: choose source."""
-        errors = {}
-
         if user_input is not None:
             self._power_source = user_input[CONF_POWER_SOURCE]
             if self._power_source == POWER_SOURCE_MANUAL:
@@ -111,13 +105,10 @@ class VoitasWallboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ])
                 ),
             }),
-            errors=errors,
         )
 
     async def async_step_power_manual(self, user_input=None):
         """Enter fixed kW value."""
-        errors = {}
-
         if user_input is not None:
             await self.async_set_unique_id(self._host)
             self._abort_if_unique_id_configured()
@@ -140,7 +131,6 @@ class VoitasWallboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
                 ),
             }),
-            errors=errors,
         )
 
     async def async_step_power_entity(self, user_input=None):
@@ -167,6 +157,88 @@ class VoitasWallboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="power_entity",
             data_schema=vol.Schema({
                 vol.Required(CONF_POWER_ENTITY): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="sensor",
+                        device_class="power",
+                    )
+                ),
+            }),
+            errors=errors,
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry):
+        return VoitasWallboxOptionsFlow(config_entry)
+
+
+class VoitasWallboxOptionsFlow(config_entries.OptionsFlow):
+    """Options flow — change power source after setup."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        self._entry = config_entry
+        self._power_source = config_entry.data.get(CONF_POWER_SOURCE, POWER_SOURCE_MANUAL)
+
+    async def async_step_init(self, user_input=None):
+        """Choose power source."""
+        if user_input is not None:
+            self._power_source = user_input[CONF_POWER_SOURCE]
+            if self._power_source == POWER_SOURCE_MANUAL:
+                return await self.async_step_manual()
+            else:
+                return await self.async_step_entity()
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema({
+                vol.Required(CONF_POWER_SOURCE, default=self._power_source): selector.SelectSelector(
+                    selector.SelectSelectorConfig(options=[
+                        selector.SelectOptionDict(value=POWER_SOURCE_MANUAL, label="Manuell (kW eingeben)"),
+                        selector.SelectOptionDict(value=POWER_SOURCE_ENTITY, label="HA Entity (z.B. Audi Sensor)"),
+                    ])
+                ),
+            }),
+        )
+
+    async def async_step_manual(self, user_input=None):
+        current = self._entry.data.get(CONF_POWER_VALUE, 11.0)
+
+        if user_input is not None:
+            return self.async_create_entry(data={
+                **self._entry.data,
+                CONF_POWER_SOURCE: POWER_SOURCE_MANUAL,
+                CONF_POWER_VALUE: user_input[CONF_POWER_VALUE],
+            })
+
+        return self.async_show_form(
+            step_id="manual",
+            data_schema=vol.Schema({
+                vol.Required(CONF_POWER_VALUE, default=current): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=1.0, max=22.0, step=0.1, unit_of_measurement="kW"
+                    )
+                ),
+            }),
+        )
+
+    async def async_step_entity(self, user_input=None):
+        errors = {}
+        current = self._entry.data.get(CONF_POWER_ENTITY, "")
+
+        if user_input is not None:
+            if not user_input.get(CONF_POWER_ENTITY):
+                errors[CONF_POWER_ENTITY] = "entity_required"
+            else:
+                return self.async_create_entry(data={
+                    **self._entry.data,
+                    CONF_POWER_SOURCE: POWER_SOURCE_ENTITY,
+                    CONF_POWER_ENTITY: user_input[CONF_POWER_ENTITY],
+                })
+
+        return self.async_show_form(
+            step_id="entity",
+            data_schema=vol.Schema({
+                vol.Required(CONF_POWER_ENTITY, default=current): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="sensor",
                         device_class="power",

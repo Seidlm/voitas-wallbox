@@ -3,6 +3,7 @@
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![HA Version](https://img.shields.io/badge/Home%20Assistant-2025.1%2B-blue)](https://www.home-assistant.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-seidlm-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/seidlm)
 
 Local Home Assistant integration for the **Voitas V11 Wallbox** EV charger.
 
@@ -138,3 +139,11 @@ MIT — see [LICENSE](LICENSE)
 ---
 
 *Reverse-engineered with ❤️ for the Voitas community.*
+
+---
+
+## Support
+
+If this integration saved your wallbox from becoming a paperweight, consider buying me a coffee! ☕
+
+[![Buy Me a Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/seidlm)

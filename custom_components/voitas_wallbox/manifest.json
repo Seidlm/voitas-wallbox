@@ -1,7 +1,7 @@
 {
   "domain": "voitas_wallbox",
   "name": "Voitas Wallbox",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "documentation": "https://github.com/Seidlm/Voitas-Walbox-HA-Integration",
   "issue_tracker": "https://github.com/Seidlm/Voitas-Walbox-HA-Integration/issues",
   "requirements": [],

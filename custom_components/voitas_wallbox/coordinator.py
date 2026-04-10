@@ -15,6 +15,9 @@ from .const import DOMAIN, STATUS_IDLE
 _LOGGER = logging.getLogger(__name__)
 
 AVAILABILITY_TIMEOUT = 30.0  # seconds without packet → unavailable
+MAX_UDP_PACKET_SIZE = 512    # bytes — reject oversized packets
+MAX_POWER_W = 100_000        # 100kW sanity cap
+MAX_PROTOCOL_VERSION = 99
 
 
 @dataclass
@@ -40,25 +43,52 @@ class VoitasData:
 
 
 def parse_packet(data: bytes) -> VoitasData | None:
-    """Parse a UDP broadcast packet from the Voitas Wallbox.
+    """Parse a UDP broadcast packet — with input validation.
 
     Format: WALLBOX-LD <proto> <uuid> <status> <f4> <max_power_w> <min_current_ma> <interval_ms>
     """
+    # Fix #5: Reject oversized packets
+    if len(data) > MAX_UDP_PACKET_SIZE:
+        _LOGGER.warning("Voitas: oversized UDP packet (%d bytes), ignoring", len(data))
+        return None
     try:
         text = data.decode("ascii").strip()
         parts = text.split(" ")
         if len(parts) < 6 or parts[0] != "WALLBOX-LD":
             return None
+
+        # Fix #6: Bounds-check on numeric fields
+        proto = int(parts[1])
+        if not (0 <= proto <= MAX_PROTOCOL_VERSION):
+            return None
+
+        max_power = int(parts[5])
+        if not (0 <= max_power <= MAX_POWER_W):
+            return None
+
+        # Validate UUID format loosely
+        uuid = parts[2]
+        if len(uuid) > 64:
+            return None
+
+        # Validate status is a known string
+        status = parts[3].lower()
+        if len(status) > 32:
+            return None
+
         return VoitasData(
-            status=parts[3],
-            uuid=parts[2],
-            max_power_w=int(parts[5]),
-            protocol_version=int(parts[1]),
+            status=status,
+            uuid=uuid,
+            max_power_w=max_power,
+            protocol_version=proto,
             raw=text,
             available=True,
             last_seen=dt_util.utcnow(),
         )
-    except Exception:
+    except (ValueError, UnicodeDecodeError):
+        return None
+    except Exception as err:
+        _LOGGER.debug("Voitas: unexpected parse error: %s", err)
         return None
 
 
@@ -72,6 +102,7 @@ class VoitasWallboxCoordinator(DataUpdateCoordinator[VoitasData]):
         self._transport = None
         self._data = VoitasData()
         self._timeout_task: asyncio.Task | None = None
+        self._timeout_task_id: int = 0  # Fix #2: Guard against stale tasks
         self._session_start: datetime | None = None
         self._session_energy_kwh: float = 0.0
 
@@ -87,9 +118,10 @@ class VoitasWallboxCoordinator(DataUpdateCoordinator[VoitasData]):
         return self._data
 
     async def async_start(self) -> None:
-        loop = asyncio.get_event_loop()
+        """Start listening for UDP broadcasts."""
         try:
-            self._transport, _ = await loop.create_datagram_endpoint(
+            # Fix #4: use hass.loop instead of asyncio.get_event_loop()
+            self._transport, _ = await self.hass.loop.create_datagram_endpoint(
                 lambda: _VoitasUDPProtocol(self._on_packet),
                 local_addr=("0.0.0.0", self.port),
                 allow_broadcast=True,
@@ -99,13 +131,22 @@ class VoitasWallboxCoordinator(DataUpdateCoordinator[VoitasData]):
             _LOGGER.error("Failed to bind UDP port %s: %s", self.port, err)
 
     async def async_stop(self) -> None:
-        if self._timeout_task:
+        """Stop UDP listener and clean up tasks."""
+        # Fix #1: proper cleanup on unload
+        if self._timeout_task and not self._timeout_task.done():
             self._timeout_task.cancel()
+            try:
+                await self._timeout_task
+            except asyncio.CancelledError:
+                pass
+        self._timeout_task = None
+
         if self._transport:
             self._transport.close()
             self._transport = None
 
     def _on_packet(self, data: bytes, addr: tuple) -> None:
+        """Handle an incoming UDP packet (called from asyncio event loop)."""
         host_ip = addr[0]
         if self.host and host_ip != self.host:
             return
@@ -117,18 +158,16 @@ class VoitasWallboxCoordinator(DataUpdateCoordinator[VoitasData]):
         # Carry over last_session from previous data
         parsed.last_session = self._data.last_session
 
-        # Track charging session start/end
+        # Track charging session transitions
         prev_status = self._data.status
         new_status = parsed.status
 
         if prev_status != "charging" and new_status == "charging":
-            # Session started
             self._session_start = dt_util.utcnow()
             self._session_energy_kwh = 0.0
             _LOGGER.debug("Voitas: charging session started")
 
         elif prev_status == "charging" and new_status != "charging":
-            # Session ended → save summary
             if self._session_start:
                 end = dt_util.utcnow()
                 duration = (end - self._session_start).total_seconds() / 60
@@ -145,20 +184,41 @@ class VoitasWallboxCoordinator(DataUpdateCoordinator[VoitasData]):
                 self._session_start = None
                 self._session_energy_kwh = 0.0
 
+        # Fix #8: on reboot/reconnect, reset stale charging state
+        if not self._data.available and new_status != "charging":
+            self._session_start = None
+
         _LOGGER.debug("Voitas packet from %s: %s", host_ip, parsed.raw)
         self._data = parsed
 
-        # Reset availability timeout
-        if self._timeout_task:
+        # Fix #1 + #2: use hass.async_create_task + stale-task guard
+        if self._timeout_task and not self._timeout_task.done():
             self._timeout_task.cancel()
-        self._timeout_task = asyncio.ensure_future(self._availability_timeout())
+
+        self._timeout_task_id += 1
+        task_id = self._timeout_task_id
+
+        # Fix #4: hass.async_create_task instead of asyncio.ensure_future
+        self._timeout_task = self.hass.async_create_task(
+            self._availability_timeout(task_id)
+        )
 
         self.async_set_updated_data(parsed)
 
-    async def _availability_timeout(self) -> None:
-        """Mark unavailable if no packet received within timeout."""
+    async def _availability_timeout(self, task_id: int) -> None:
+        """Mark unavailable if no packet received within timeout.
+
+        Fix #2: task_id guard prevents stale tasks from firing.
+        """
         await asyncio.sleep(AVAILABILITY_TIMEOUT)
-        _LOGGER.warning("Voitas Wallbox: no packet for %ss → unavailable", AVAILABILITY_TIMEOUT)
+
+        # Only fire if this is still the current timeout task
+        if task_id != self._timeout_task_id:
+            return
+
+        _LOGGER.warning(
+            "Voitas Wallbox: no packet for %ss → unavailable", AVAILABILITY_TIMEOUT
+        )
         self._data = VoitasData(
             available=False,
             last_session=self._data.last_session,
@@ -167,6 +227,8 @@ class VoitasWallboxCoordinator(DataUpdateCoordinator[VoitasData]):
 
 
 class _VoitasUDPProtocol(asyncio.DatagramProtocol):
+    """asyncio UDP protocol handler."""
+
     def __init__(self, callback) -> None:
         self._callback = callback
 

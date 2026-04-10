@@ -11,6 +11,7 @@ from homeassistant.const import UnitOfPower, UnitOfEnergy
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 import homeassistant.util.dt as dt_util
 
@@ -167,8 +168,12 @@ class VoitasPowerSensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEntit
         return self.coordinator.current_data.available
 
 
-class VoitasEnergySensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEntity):
-    """Sensor for total energy delivered (kWh) — calculated via time integration."""
+class VoitasEnergySensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEntity, RestoreEntity):
+    """Sensor for total energy delivered (kWh) — calculated via time integration.
+
+    Uses TOTAL_INCREASING so HA Energy Dashboard can track daily/monthly consumption.
+    Value persists across HA restarts via RestoreEntity.
+    """
 
     _attr_has_entity_name = True
     _attr_name = "Energy"
@@ -189,14 +194,24 @@ class VoitasEnergySensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEnti
     def device_info(self):
         return _device_info(self.coordinator, self._entry)
 
+    async def async_added_to_hass(self) -> None:
+        """Restore last known energy value after HA restart."""
+        await super().async_added_to_hass()
+        if (last_state := await self.async_get_last_state()) is not None:
+            try:
+                self._energy_kwh = float(last_state.state)
+            except (ValueError, TypeError):
+                self._energy_kwh = 0.0
+        self._last_update = dt_util.utcnow()
+
     @callback
     def _handle_coordinator_update(self) -> None:
         now = dt_util.utcnow()
         elapsed_hours = (now - self._last_update).total_seconds() / 3600.0
         power_kw = self._power_sensor.native_value or 0.0
-        self._energy_kwh += power_kw * elapsed_hours
+        if power_kw > 0:
+            self._energy_kwh += power_kw * elapsed_hours
         self._last_update = now
-        # Update coordinator with current session energy
         self.coordinator.update_session_energy(self._energy_kwh)
         self.async_write_ha_state()
 

@@ -176,7 +176,8 @@ class VoitasWallboxOptionsFlow(config_entries.OptionsFlow):
     """Options flow — change power source after setup."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self._entry = config_entry
+        super().__init__()
+        self._config_entry = config_entry
         self._power_source = config_entry.data.get(CONF_POWER_SOURCE, POWER_SOURCE_MANUAL)
 
     async def async_step_init(self, user_input=None):
@@ -201,11 +202,11 @@ class VoitasWallboxOptionsFlow(config_entries.OptionsFlow):
         )
 
     async def async_step_manual(self, user_input=None):
-        current = self._entry.data.get(CONF_POWER_VALUE, 11.0)
+        current = self._config_entry.data.get(CONF_POWER_VALUE, 11.0)
 
         if user_input is not None:
             return self.async_create_entry(data={
-                **self._entry.data,
+                **self._config_entry.data,
                 CONF_POWER_SOURCE: POWER_SOURCE_MANUAL,
                 CONF_POWER_VALUE: user_input[CONF_POWER_VALUE],
             })
@@ -223,14 +224,14 @@ class VoitasWallboxOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_entity(self, user_input=None):
         errors = {}
-        current = self._entry.data.get(CONF_POWER_ENTITY, "")
+        current = self._config_entry.data.get(CONF_POWER_ENTITY, "")
 
         if user_input is not None:
             if not user_input.get(CONF_POWER_ENTITY):
                 errors[CONF_POWER_ENTITY] = "entity_required"
             else:
                 return self.async_create_entry(data={
-                    **self._entry.data,
+                    **self._config_entry.data,
                     CONF_POWER_SOURCE: POWER_SOURCE_ENTITY,
                     CONF_POWER_ENTITY: user_input[CONF_POWER_ENTITY],
                 })

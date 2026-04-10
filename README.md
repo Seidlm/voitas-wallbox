@@ -1,17 +1,17 @@
-# Voitas Wallbox — Home Assistant Integration
+﻿# Voitas Wallbox â€” Home Assistant Integration
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Seidlm&repository=Voitas-Walbox-HA-Integration&category=integration)
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Seidlm&repository=Voitas-Wallbox-HA-Integration&category=integration)
 [![HA Version](https://img.shields.io/badge/Home%20Assistant-2025.1%2B-blue)](https://www.home-assistant.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-seidlm-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/seidlm)
-[![GitHub Stars](https://img.shields.io/github/stars/Seidlm/Voitas-Walbox-HA-Integration?style=flat)](https://github.com/Seidlm/Voitas-Walbox-HA-Integration/stargazers)
-[![GitHub Downloads](https://img.shields.io/github/downloads/Seidlm/Voitas-Walbox-HA-Integration/total?style=flat)](https://github.com/Seidlm/Voitas-Walbox-HA-Integration/releases)
-[![GitHub Issues](https://img.shields.io/github/issues/Seidlm/Voitas-Walbox-HA-Integration?style=flat)](https://github.com/Seidlm/Voitas-Walbox-HA-Integration/issues)
+[![GitHub Stars](https://img.shields.io/github/stars/Seidlm/Voitas-Wallbox-HA-Integration?style=flat)](https://github.com/Seidlm/Voitas-Wallbox-HA-Integration/stargazers)
+[![GitHub Downloads](https://img.shields.io/github/downloads/Seidlm/Voitas-Wallbox-HA-Integration/total?style=flat)](https://github.com/Seidlm/Voitas-Wallbox-HA-Integration/releases)
+[![GitHub Issues](https://img.shields.io/github/issues/Seidlm/Voitas-Wallbox-HA-Integration?style=flat)](https://github.com/Seidlm/Voitas-Wallbox-HA-Integration/issues)
 
 Local Home Assistant integration for the **Voitas V11 Wallbox** EV charger.
 
-> ⚠️ **Background:** Voitas Innovations has ceased operations and their cloud infrastructure is largely offline. The official app no longer works. This integration bypasses the cloud entirely by listening to the **local UDP broadcast** that the wallbox transmits on your network — no internet connection required.
+> âš ï¸ **Background:** Voitas Innovations has ceased operations and their cloud infrastructure is largely offline. The official app no longer works. This integration bypasses the cloud entirely by listening to the **local UDP broadcast** that the wallbox transmits on your network â€” no internet connection required.
 
 ---
 
@@ -28,7 +28,7 @@ WALLBOX-LD 3 <device-uuid> <status> <f4> <max_power_w> <min_current_ma> <interva
 WALLBOX-LD 3 74c777d2-807e-4a9f-ba83-d606130065f3 charging 0 20000 2000 600
 ```
 
-This integration listens for these broadcasts and exposes the data as Home Assistant entities. No polling, no cloud, no authentication required — it just works as long as your HA instance is on the same network as the wallbox.
+This integration listens for these broadcasts and exposes the data as Home Assistant entities. No polling, no cloud, no authentication required â€” it just works as long as your HA instance is on the same network as the wallbox.
 
 > **Note on charging power:** The UDP broadcast does not include the actual charging power in watts. To track energy consumption (kWh), you can either enter a fixed power value (e.g. your wallbox's configured limit) or connect a sensor from your car's HA integration (e.g. Audi, Volkswagen, Hyundai) that reports the live charging power.
 
@@ -36,14 +36,14 @@ This integration listens for these broadcasts and exposes the data as Home Assis
 
 ## Features
 
-- 📡 **Local push** — UDP broadcast, near real-time (~600ms), no polling
-- 🔌 **Charging status** — `idle` / `charging`
-- ⚡ **Charging power** — from a fixed kW value or any HA power sensor (e.g. your car)
-- 🔋 **Energy (kWh)** — calculated via time integration, compatible with HA Energy Dashboard
-- ⏱️ **Session duration** — minutes since charging started, resets when done
-- 📊 **Last session summary** — duration + kWh of the previous charge stored as attributes
-- 🏥 **Availability monitoring** — sensors go `unavailable` if no packet received for 30s
-- 🔧 **Diagnostic sensor** — raw packet data and packet counter for debugging
+- ðŸ“¡ **Local push** â€” UDP broadcast, near real-time (~600ms), no polling
+- ðŸ”Œ **Charging status** â€” `idle` / `charging`
+- âš¡ **Charging power** â€” from a fixed kW value or any HA power sensor (e.g. your car)
+- ðŸ”‹ **Energy (kWh)** â€” calculated via time integration, compatible with HA Energy Dashboard
+- â±ï¸ **Session duration** â€” minutes since charging started, resets when done
+- ðŸ“Š **Last session summary** â€” duration + kWh of the previous charge stored as attributes
+- ðŸ¥ **Availability monitoring** â€” sensors go `unavailable` if no packet received for 30s
+- ðŸ”§ **Diagnostic sensor** â€” raw packet data and packet counter for debugging
 
 ---
 
@@ -51,24 +51,24 @@ This integration listens for these broadcasts and exposes the data as Home Assis
 
 ### One-click install
 
-[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Seidlm&repository=Voitas-Walbox-HA-Integration&category=integration)
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Seidlm&repository=Voitas-Wallbox-HA-Integration&category=integration)
 
 ### Manual
 
-1. In HACS → **Integrations** → ⋮ → **Custom repositories**
-2. Add `https://github.com/Seidlm/Voitas-Walbox-HA-Integration` → Category: **Integration**
+1. In HACS â†’ **Integrations** â†’ â‹® â†’ **Custom repositories**
+2. Add `https://github.com/Seidlm/Voitas-Wallbox-HA-Integration` â†’ Category: **Integration**
 3. Click **Download**
 4. Restart Home Assistant
-5. Go to **Settings → Devices & Services → + Add Integration → Voitas Wallbox**
+5. Go to **Settings â†’ Devices & Services â†’ + Add Integration â†’ Voitas Wallbox**
 
 ---
 
 ## Setup
 
-### Step 1 — Wallbox IP
+### Step 1 â€” Wallbox IP
 Enter the local IP address of your Voitas V11 (e.g. `192.168.1.149`). The integration will listen for UDP broadcasts on port **43000** and verify connectivity before proceeding.
 
-### Step 2 — Power Source
+### Step 2 â€” Power Source
 Choose how the charging power is determined:
 
 | Option | When to use |
@@ -79,7 +79,7 @@ Choose how the charging power is determined:
 Using an actual car sensor gives you precise kWh calculations. The Audi, Volkswagen, and other car integrations typically expose a `sensor.*_charging_power` entity.
 
 ### Changing the power source later
-Go to **Settings → Devices & Services → Voitas Wallbox → ⋮ → Configure**
+Go to **Settings â†’ Devices & Services â†’ Voitas Wallbox â†’ â‹® â†’ Configure**
 
 ---
 
@@ -87,19 +87,19 @@ Go to **Settings → Devices & Services → Voitas Wallbox → ⋮ → Configure
 
 | Entity | Type | Unit | Description |
 |--------|------|------|-------------|
-| `binary_sensor.*_charging` | Binary Sensor | — | `on` when charging |
-| `sensor.*_status` | Sensor | — | `idle` or `charging` |
+| `binary_sensor.*_charging` | Binary Sensor | â€” | `on` when charging |
+| `sensor.*_status` | Sensor | â€” | `idle` or `charging` |
 | `sensor.*_charging_power` | Sensor | kW | Current charging power |
 | `sensor.*_energy` | Sensor | kWh | Total energy (session, resets on HA restart) |
 | `sensor.*_session_duration` | Sensor | min | Minutes since charging started |
 | `sensor.*_max_power` | Sensor | kW | Wallbox max capacity *(disabled by default)* |
-| `sensor.*_last_packet` | Diagnostic | — | Raw UDP data + packet count *(disabled by default)* |
+| `sensor.*_last_packet` | Diagnostic | â€” | Raw UDP data + packet count *(disabled by default)* |
 
 ### Last session attributes
 After a charging session ends, the `status` sensor stores a summary:
-- `last_session_duration_min` — how long it took
-- `last_session_energy_kwh` — how much was charged
-- `last_session_start` / `last_session_end` — timestamps
+- `last_session_duration_min` â€” how long it took
+- `last_session_energy_kwh` â€” how much was charged
+- `last_session_start` / `last_session_end` â€” timestamps
 
 ### Energy Dashboard
 Add `sensor.*_energy` to your HA Energy Dashboard under **Individual devices**.
@@ -117,16 +117,16 @@ Add `sensor.*_energy` to your HA Energy Dashboard under **Individual devices**.
 ## Troubleshooting
 
 **Integration setup fails / "Cannot connect"**
-→ Make sure the IP is correct, the wallbox is powered on and connected to your network, and that UDP port 43000 is reachable from your HA host.
+â†’ Make sure the IP is correct, the wallbox is powered on and connected to your network, and that UDP port 43000 is reachable from your HA host.
 
 **Sensors show `unavailable`**
-→ No UDP packet received for 30 seconds. Check network connectivity. The wallbox broadcasts continuously when powered.
+â†’ No UDP packet received for 30 seconds. Check network connectivity. The wallbox broadcasts continuously when powered.
 
 **Energy shows 0**
-→ Make sure a power source is configured. If using a car entity, check that the entity reports values in **kW** (not W).
+â†’ Make sure a power source is configured. If using a car entity, check that the entity reports values in **kW** (not W).
 
 **Charging power shows 0 while charging**
-→ The wallbox status shows `charging` but power is 0 because the car hasn't started drawing power yet, or the configured entity is unavailable.
+â†’ The wallbox status shows `charging` but power is 0 because the car hasn't started drawing power yet, or the configured entity is unavailable.
 
 ---
 
@@ -144,16 +144,17 @@ Found more fields in the protocol? Managed to enable Modbus? Open an issue or PR
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+MIT â€” see [LICENSE](LICENSE)
 
 ---
 
-*Reverse-engineered with ❤️ for the Voitas community.*
+*Reverse-engineered with â¤ï¸ for the Voitas community.*
 
 ---
 
 ## Support
 
-If this integration saved your wallbox from becoming a paperweight, consider buying me a coffee! ☕
+If this integration saved your wallbox from becoming a paperweight, consider buying me a coffee! â˜•
 
 [![Buy Me a Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/seidlm)
+

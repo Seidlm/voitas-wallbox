@@ -1,13 +1,13 @@
 # Voitas Wallbox — Home Assistant Integration
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Seidlm&repository=ha-voitas-wallbox&category=integration)
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Seidlm&repository=voitas-wallbox-hacs&category=integration)
 [![HA Version](https://img.shields.io/badge/Home%20Assistant-2025.1%2B-blue)](https://www.home-assistant.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-seidlm-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/seidlm)
-[![GitHub Stars](https://img.shields.io/github/stars/Seidlm/ha-voitas-wallbox?style=flat)](https://github.com/Seidlm/ha-voitas-wallbox/stargazers)
-[![GitHub Downloads](https://img.shields.io/github/downloads/Seidlm/ha-voitas-wallbox/total?style=flat)](https://github.com/Seidlm/ha-voitas-wallbox/releases)
-[![GitHub Issues](https://img.shields.io/github/issues/Seidlm/ha-voitas-wallbox?style=flat)](https://github.com/Seidlm/ha-voitas-wallbox/issues)
+[![GitHub Stars](https://img.shields.io/github/stars/Seidlm/voitas-wallbox-hacs?style=flat)](https://github.com/Seidlm/voitas-wallbox-hacs/stargazers)
+[![GitHub Downloads](https://img.shields.io/github/downloads/Seidlm/voitas-wallbox-hacs/total?style=flat)](https://github.com/Seidlm/voitas-wallbox-hacs/releases)
+[![GitHub Issues](https://img.shields.io/github/issues/Seidlm/voitas-wallbox-hacs?style=flat)](https://github.com/Seidlm/voitas-wallbox-hacs/issues)
 
 Local Home Assistant integration for the **Voitas V11 Wallbox** EV charger.
 
@@ -51,12 +51,12 @@ This integration listens for these broadcasts and exposes the data as Home Assis
 
 ### One-click install
 
-[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Seidlm&repository=ha-voitas-wallbox&category=integration)
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Seidlm&repository=voitas-wallbox-hacs&category=integration)
 
 ### Manual
 
 1. In HACS → **Integrations** → ⋮ → **Custom repositories**
-2. Add `https://github.com/Seidlm/ha-voitas-wallbox` → Category: **Integration**
+2. Add `https://github.com/Seidlm/voitas-wallbox-hacs` → Category: **Integration**
 3. Click **Download**
 4. Restart Home Assistant
 5. Go to **Settings → Devices & Services → + Add Integration → Voitas Wallbox**

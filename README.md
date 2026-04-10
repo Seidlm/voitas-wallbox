@@ -1,6 +1,7 @@
 # Voitas Wallbox — Home Assistant Integration
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Seidlm&repository=Voitas-Walbox-HA-Integration&category=integration)
 [![HA Version](https://img.shields.io/badge/Home%20Assistant-2025.1%2B-blue)](https://www.home-assistant.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-seidlm-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/seidlm)
@@ -44,6 +45,12 @@ This integration listens for these broadcasts and exposes the data as Home Assis
 ---
 
 ## Installation via HACS
+
+### One-click install
+
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Seidlm&repository=Voitas-Walbox-HA-Integration&category=integration)
+
+### Manual
 
 1. In HACS → **Integrations** → ⋮ → **Custom repositories**
 2. Add `https://github.com/Seidlm/Voitas-Walbox-HA-Integration` → Category: **Integration**

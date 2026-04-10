@@ -15,6 +15,107 @@ Local Home Assistant integration for the **Voitas V11 Wallbox** EV charger.
 
 ---
 
+## Dashboard Preview
+
+![Voitas Wallbox Dashboard](dashboard/screenshot.jpg)
+
+---
+
+## Dashboard Card
+
+Requires [Mushroom Cards](https://github.com/piitaya/lovelace-mushroom) and [Mini Graph Card](https://github.com/kalkih/mini-graph-card) from HACS Frontend.
+
+In your dashboard → **+ Add Card → Manual** → paste this YAML (replace the IP in entity IDs with yours):
+
+```yaml
+type: vertical-stack
+cards:
+  - type: custom:mushroom-template-card
+    primary: Voitas Wallbox
+    secondary: >
+      {% if is_state('binary_sensor.voitas_wallbox_192_168_1_149_charging', 'on') %}
+        🔋 Charging
+      {% else %}
+        💤 Ready
+      {% endif %}
+    icon: mdi:ev-station
+    icon_color: >
+      {% if is_state('binary_sensor.voitas_wallbox_192_168_1_149_charging', 'on') %}
+        green
+      {% else %}
+        grey
+      {% endif %}
+    entity: binary_sensor.voitas_wallbox_192_168_1_149_charging
+
+  - type: horizontal-stack
+    cards:
+      - type: custom:mushroom-entity-card
+        entity: sensor.voitas_wallbox_192_168_1_149_charging_power
+        name: Power
+        icon: mdi:flash
+        icon_color: amber
+      - type: custom:mushroom-entity-card
+        entity: sensor.voitas_wallbox_192_168_1_149_session_duration
+        name: Session
+        icon: mdi:timer
+        icon_color: blue
+      - type: custom:mushroom-entity-card
+        entity: sensor.voitas_wallbox_192_168_1_149_energy
+        name: Energy
+        icon: mdi:lightning-bolt
+        icon_color: green
+
+  - type: custom:mini-graph-card
+    entities:
+      - entity: sensor.voitas_wallbox_192_168_1_149_charging_power
+        name: Charging Power (kW)
+        color: "#f59e0b"
+    name: Charging Power
+    hours_to_show: 24
+    points_per_hour: 6
+    line_width: 2
+    show:
+      labels: true
+      points: false
+      legend: false
+      fill: fade
+
+  - type: custom:mini-graph-card
+    entities:
+      - entity: sensor.voitas_wallbox_192_168_1_149_energy
+        name: Energy (kWh)
+        color: "#22c55e"
+    name: Total Energy
+    hours_to_show: 168
+    points_per_hour: 1
+    line_width: 2
+    show:
+      labels: true
+      points: false
+      legend: false
+      fill: fade
+
+  - type: markdown
+    content: |
+      ## Last Session
+      {% set s = state_attr('sensor.voitas_wallbox_192_168_1_149_status', 'last_session_duration_min') %}
+      {% set e = state_attr('sensor.voitas_wallbox_192_168_1_149_status', 'last_session_energy_kwh') %}
+      {% set t = state_attr('sensor.voitas_wallbox_192_168_1_149_status', 'last_session_end') %}
+      {% if s %}
+      | | |
+      |---|---|
+      | ⏱️ Duration | {{ s }} min |
+      | ⚡ Energy | {{ e }} kWh |
+      | 🕐 End | {{ as_timestamp(t) | timestamp_custom('%Y-%m-%d %H:%M') }} |
+      {% else %}
+      *No completed session yet.*
+      {% endif %}
+```
+
+> Replace `192_168_1_149` in all entity IDs with your wallbox IP (dots replaced by underscores).
+
+---
+
 ## How it works
 
 The Voitas V11 broadcasts a status packet every ~600ms on **UDP port 43000** to the local network:

@@ -1,0 +1,101 @@
+title: Voitas Wallbox
+views:
+  - title: Wallbox
+    icon: mdi:ev-station
+    cards:
+      # Status Card
+      - type: custom:mushroom-template-card
+        primary: Voitas Wallbox
+        secondary: >
+          {% if is_state('binary_sensor.voitas_wallbox_192_168_1_149_charging', 'on') %}
+            🔋 Lädt gerade
+          {% else %}
+            💤 Bereit
+          {% endif %}
+        icon: mdi:ev-station
+        icon_color: >
+          {% if is_state('binary_sensor.voitas_wallbox_192_168_1_149_charging', 'on') %}
+            green
+          {% else %}
+            grey
+          {% endif %}
+        badge_icon: >
+          {% if is_state('binary_sensor.voitas_wallbox_192_168_1_149_charging', 'on') %}
+            mdi:lightning-bolt
+          {% endif %}
+        badge_color: amber
+        tap_action:
+          action: more-info
+        entity: binary_sensor.voitas_wallbox_192_168_1_149_charging
+
+      # Stats Row
+      - type: horizontal-stack
+        cards:
+          - type: custom:mushroom-entity-card
+            entity: sensor.voitas_wallbox_192_168_1_149_charging_power
+            name: Leistung
+            icon: mdi:flash
+            icon_color: amber
+
+          - type: custom:mushroom-entity-card
+            entity: sensor.voitas_wallbox_192_168_1_149_session_duration
+            name: Session
+            icon: mdi:timer
+            icon_color: blue
+
+          - type: custom:mushroom-entity-card
+            entity: sensor.voitas_wallbox_192_168_1_149_energy
+            name: Energie
+            icon: mdi:lightning-bolt
+            icon_color: green
+
+      # Power Graph
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.voitas_wallbox_192_168_1_149_charging_power
+            name: Ladeleistung (kW)
+            color: "#f59e0b"
+        name: Ladeleistung
+        icon: mdi:chart-line
+        hours_to_show: 24
+        points_per_hour: 6
+        line_width: 2
+        show:
+          labels: true
+          points: false
+          legend: false
+          fill: fade
+
+      # Energy Graph
+      - type: custom:mini-graph-card
+        entities:
+          - entity: sensor.voitas_wallbox_192_168_1_149_energy
+            name: Energie (kWh)
+            color: "#22c55e"
+        name: Geladene Energie
+        icon: mdi:battery-charging
+        hours_to_show: 168
+        points_per_hour: 1
+        line_width: 2
+        show:
+          labels: true
+          points: false
+          legend: false
+          fill: fade
+
+      # Last Session
+      - type: markdown
+        content: >
+          ## Letzte Session
+          {% set s = state_attr('sensor.voitas_wallbox_192_168_1_149_status', 'last_session_duration_min') %}
+          {% set e = state_attr('sensor.voitas_wallbox_192_168_1_149_status', 'last_session_energy_kwh') %}
+          {% set t = state_attr('sensor.voitas_wallbox_192_168_1_149_status', 'last_session_end') %}
+          {% if s %}
+          | | |
+          |---|---|
+          | ⏱️ Dauer | {{ s }} Min |
+          | ⚡ Energie | {{ e }} kWh |
+          | 🕐 Ende | {{ as_timestamp(t) | timestamp_custom('%d.%m.%Y %H:%M') }} |
+          {% else %}
+          *Noch keine abgeschlossene Session.*
+          {% endif %}

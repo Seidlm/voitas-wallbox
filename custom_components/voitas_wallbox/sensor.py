@@ -251,7 +251,9 @@ class VoitasEnergySensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEnti
 
     @property
     def available(self):
-        return self.coordinator.current_data.available
+        # Energy sensor is always available — it tracks cumulative kWh
+        # and survives periods when the box is offline
+        return True
 
 
 class VoitasSessionDurationSensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEntity, RestoreEntity):

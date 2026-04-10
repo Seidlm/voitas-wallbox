@@ -1,108 +1,140 @@
-<<<<<<< HEAD
 # Voitas Wallbox — Home Assistant Integration
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+[![HA Version](https://img.shields.io/badge/Home%20Assistant-2025.1%2B-blue)](https://www.home-assistant.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Local integration for the **Voitas V11 Wallbox** EV charger via its UDP broadcast protocol (port 43000). Works fully **offline** — no cloud required.
+Local Home Assistant integration for the **Voitas V11 Wallbox** EV charger.
 
-> ⚠️ Voitas Innovations is no longer active. This integration was reverse-engineered from the local UDP protocol broadcast by the wallbox.
+> ⚠️ **Background:** Voitas Innovations has ceased operations and their cloud infrastructure is largely offline. The official app no longer works. This integration bypasses the cloud entirely by listening to the **local UDP broadcast** that the wallbox transmits on your network — no internet connection required.
+
+---
+
+## How it works
+
+The Voitas V11 broadcasts a status packet every ~600ms on **UDP port 43000** to the local network:
+
+```
+WALLBOX-LD 3 <device-uuid> <status> <f4> <max_power_w> <min_current_ma> <interval_ms>
+```
+
+**Example:**
+```
+WALLBOX-LD 3 74c777d2-807e-4a9f-ba83-d606130065f3 charging 0 20000 2000 600
+```
+
+This integration listens for these broadcasts and exposes the data as Home Assistant entities. No polling, no cloud, no authentication required — it just works as long as your HA instance is on the same network as the wallbox.
+
+> **Note on charging power:** The UDP broadcast does not include the actual charging power in watts. To track energy consumption (kWh), you can either enter a fixed power value (e.g. your wallbox's configured limit) or connect a sensor from your car's HA integration (e.g. Audi, Volkswagen, Hyundai) that reports the live charging power.
 
 ---
 
 ## Features
 
-- 🔌 **Charging status** — idle / charging
-- ⚡ **Charging power** — manual kW value or from any HA entity (e.g. your car's charging sensor)
+- 📡 **Local push** — UDP broadcast, near real-time (~600ms), no polling
+- 🔌 **Charging status** — `idle` / `charging`
+- ⚡ **Charging power** — from a fixed kW value or any HA power sensor (e.g. your car)
 - 🔋 **Energy (kWh)** — calculated via time integration, compatible with HA Energy Dashboard
-- 📡 **Local push** — UDP broadcast, no polling, near real-time (~600ms)
-- 🏠 **No cloud** — works even though Voitas servers are offline
+- ⏱️ **Session duration** — minutes since charging started, resets when done
+- 📊 **Last session summary** — duration + kWh of the previous charge stored as attributes
+- 🏥 **Availability monitoring** — sensors go `unavailable` if no packet received for 30s
+- 🔧 **Diagnostic sensor** — raw packet data and packet counter for debugging
 
 ---
 
 ## Installation via HACS
 
 1. In HACS → **Integrations** → ⋮ → **Custom repositories**
-2. Add `https://github.com/Seidlm/Voitas-Walbox-HA-Integration` as **Integration**
-3. Install **Voitas Wallbox**
+2. Add `https://github.com/Seidlm/Voitas-Walbox-HA-Integration` → Category: **Integration**
+3. Click **Download**
 4. Restart Home Assistant
-5. Go to **Settings → Devices & Services → Add Integration → Voitas Wallbox**
+5. Go to **Settings → Devices & Services → + Add Integration → Voitas Wallbox**
 
 ---
 
 ## Setup
 
-### Step 1: Wallbox IP
-Enter the local IP address of your Voitas V11 (e.g. `192.168.1.149`).
+### Step 1 — Wallbox IP
+Enter the local IP address of your Voitas V11 (e.g. `192.168.1.149`). The integration will listen for UDP broadcasts on port **43000** and verify connectivity before proceeding.
 
-The integration will listen for UDP broadcasts on port **43000**.
+### Step 2 — Power Source
+Choose how the charging power is determined:
 
-### Step 2: Charging Power Source
-
-| Option | Description |
+| Option | When to use |
 |--------|-------------|
-| **Manual (kW)** | Enter a fixed value (e.g. `11.0` for 11kW) |
-| **HA Entity** | Select a sensor that reports charging power in kW (e.g. from Audi, Volkswagen, or other car integrations) |
+| **Manual (kW)** | Enter a fixed value matching your wallbox configuration (e.g. `11.0` kW) |
+| **HA Entity** | Select a sensor from your car integration that reports live charging power in kW |
 
-Using an actual car sensor gives you accurate kWh calculations.
+Using an actual car sensor gives you precise kWh calculations. The Audi, Volkswagen, and other car integrations typically expose a `sensor.*_charging_power` entity.
+
+### Changing the power source later
+Go to **Settings → Devices & Services → Voitas Wallbox → ⋮ → Configure**
 
 ---
 
 ## Entities
 
-| Entity | Type | Description |
-|--------|------|-------------|
-| `binary_sensor.voitas_wallbox_charging` | Binary Sensor | `on` when charging |
-| `sensor.voitas_wallbox_status` | Sensor | `idle` or `charging` |
-| `sensor.voitas_wallbox_charging_power` | Sensor (kW) | Current charging power |
-| `sensor.voitas_wallbox_energy` | Sensor (kWh) | Total energy delivered (resets on HA restart) |
+| Entity | Type | Unit | Description |
+|--------|------|------|-------------|
+| `binary_sensor.*_charging` | Binary Sensor | — | `on` when charging |
+| `sensor.*_status` | Sensor | — | `idle` or `charging` |
+| `sensor.*_charging_power` | Sensor | kW | Current charging power |
+| `sensor.*_energy` | Sensor | kWh | Total energy (session, resets on HA restart) |
+| `sensor.*_session_duration` | Sensor | min | Minutes since charging started |
+| `sensor.*_max_power` | Sensor | kW | Wallbox max capacity *(disabled by default)* |
+| `sensor.*_last_packet` | Diagnostic | — | Raw UDP data + packet count *(disabled by default)* |
+
+### Last session attributes
+After a charging session ends, the `status` sensor stores a summary:
+- `last_session_duration_min` — how long it took
+- `last_session_energy_kwh` — how much was charged
+- `last_session_start` / `last_session_end` — timestamps
 
 ### Energy Dashboard
-Add `sensor.voitas_wallbox_energy` to your Energy Dashboard under **Individual devices**.
+Add `sensor.*_energy` to your HA Energy Dashboard under **Individual devices**.
 
 ---
 
-## UDP Protocol
+## Network requirements
 
-The Voitas V11 broadcasts on UDP port 43000 every ~600ms:
-
-```
-WALLBOX-LD <proto> <uuid> <status> <f4> <max_power_w> <min_current_ma> <interval_ms>
-```
-
-Example:
-```
-WALLBOX-LD 3 74c777d2-807e-4a9f-ba83-d606130065f3 charging 0 20000 2000 600
-```
-
-| Field | Value | Meaning |
-|-------|-------|---------|
-| 0 | `WALLBOX-LD` | Device type |
-| 1 | `3` | Protocol version |
-| 2 | UUID | Device identifier |
-| 3 | `idle`/`charging` | Current status |
-| 4 | `0` | Unknown |
-| 5 | `20000` | Max power (W) |
-| 6 | `2000` | Min current (mA) |
-| 7 | `600` | Broadcast interval (ms) |
+- Home Assistant and the Voitas Wallbox must be on the **same network/VLAN**
+- UDP port **43000** must not be blocked by a firewall between them
+- The wallbox must be connected via **WiFi or LAN**
 
 ---
 
 ## Troubleshooting
 
-**No data received:**
-- Make sure HA and the Wallbox are on the same network/VLAN
-- Check that UDP port 43000 is not blocked by a firewall
-- The Wallbox must be powered on and connected to WiFi/LAN
+**Integration setup fails / "Cannot connect"**
+→ Make sure the IP is correct, the wallbox is powered on and connected to your network, and that UDP port 43000 is reachable from your HA host.
+
+**Sensors show `unavailable`**
+→ No UDP packet received for 30 seconds. Check network connectivity. The wallbox broadcasts continuously when powered.
+
+**Energy shows 0**
+→ Make sure a power source is configured. If using a car entity, check that the entity reports values in **kW** (not W).
+
+**Charging power shows 0 while charging**
+→ The wallbox status shows `charging` but power is 0 because the car hasn't started drawing power yet, or the configured entity is unavailable.
+
+---
+
+## Technical details
+
+The Voitas V11 runs on an **Orange Pi Zero** (Debian 10). The UDP broadcast protocol was reverse-engineered since the official cloud infrastructure (AWS WebSocket backend) is no longer functional following Voitas Innovations' closure. The wallbox also has Modbus TCP (port 502) support per its datasheet (PN-EN IEC 61851-1), but it appears to require activation via the now-defunct app.
 
 ---
 
 ## Contributing
 
-Found more fields in the protocol? Open an issue or PR!
+Found more fields in the protocol? Managed to enable Modbus? Open an issue or PR!
 
 ---
 
-*Reverse-engineered with ❤️ — for the Voitas community.*
-=======
-# Voitas-Walbox-HA-Integration
->>>>>>> cc55071da33416811c9570e0de30c74b8be49c3b
+## License
+
+MIT — see [LICENSE](LICENSE)
+
+---
+
+*Reverse-engineered with ❤️ for the Voitas community.*

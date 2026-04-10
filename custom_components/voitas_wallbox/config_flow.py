@@ -91,27 +91,15 @@ class VoitasWallboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_power(self, user_input=None):
+        """Step 1 of power config: choose source."""
         errors = {}
 
         if user_input is not None:
-            source = user_input[CONF_POWER_SOURCE]
-            data = {
-                CONF_HOST: self._host,
-                CONF_PORT: self._port,
-                CONF_POWER_SOURCE: source,
-            }
-            if source == POWER_SOURCE_MANUAL:
-                data[CONF_POWER_VALUE] = user_input.get(CONF_POWER_VALUE, 11.0)
+            self._power_source = user_input[CONF_POWER_SOURCE]
+            if self._power_source == POWER_SOURCE_MANUAL:
+                return await self.async_step_power_manual()
             else:
-                data[CONF_POWER_ENTITY] = user_input.get(CONF_POWER_ENTITY, "")
-
-            await self.async_set_unique_id(self._host)
-            self._abort_if_unique_id_configured()
-
-            return self.async_create_entry(
-                title=f"Voitas Wallbox ({self._host})",
-                data=data,
-            )
+                return await self.async_step_power_entity()
 
         return self.async_show_form(
             step_id="power",
@@ -122,8 +110,63 @@ class VoitasWallboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         selector.SelectOptionDict(value=POWER_SOURCE_ENTITY, label="HA Entity (z.B. Audi Sensor)"),
                     ])
                 ),
-                vol.Optional(CONF_POWER_VALUE, default=11.0): vol.Coerce(float),
-                vol.Optional(CONF_POWER_ENTITY, default=""): selector.EntitySelector(
+            }),
+            errors=errors,
+        )
+
+    async def async_step_power_manual(self, user_input=None):
+        """Enter fixed kW value."""
+        errors = {}
+
+        if user_input is not None:
+            await self.async_set_unique_id(self._host)
+            self._abort_if_unique_id_configured()
+            return self.async_create_entry(
+                title=f"Voitas Wallbox ({self._host})",
+                data={
+                    CONF_HOST: self._host,
+                    CONF_PORT: self._port,
+                    CONF_POWER_SOURCE: POWER_SOURCE_MANUAL,
+                    CONF_POWER_VALUE: user_input.get(CONF_POWER_VALUE, 11.0),
+                },
+            )
+
+        return self.async_show_form(
+            step_id="power_manual",
+            data_schema=vol.Schema({
+                vol.Required(CONF_POWER_VALUE, default=11.0): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=1.0, max=22.0, step=0.1, unit_of_measurement="kW"
+                    )
+                ),
+            }),
+            errors=errors,
+        )
+
+    async def async_step_power_entity(self, user_input=None):
+        """Select HA entity for charging power."""
+        errors = {}
+
+        if user_input is not None:
+            if not user_input.get(CONF_POWER_ENTITY):
+                errors[CONF_POWER_ENTITY] = "entity_required"
+            else:
+                await self.async_set_unique_id(self._host)
+                self._abort_if_unique_id_configured()
+                return self.async_create_entry(
+                    title=f"Voitas Wallbox ({self._host})",
+                    data={
+                        CONF_HOST: self._host,
+                        CONF_PORT: self._port,
+                        CONF_POWER_SOURCE: POWER_SOURCE_ENTITY,
+                        CONF_POWER_ENTITY: user_input[CONF_POWER_ENTITY],
+                    },
+                )
+
+        return self.async_show_form(
+            step_id="power_entity",
+            data_schema=vol.Schema({
+                vol.Required(CONF_POWER_ENTITY): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="sensor",
                         device_class="power",

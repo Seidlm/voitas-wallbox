@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Voitas Wallbox",
-        "description": "Enter the IP address of your Voitas Wallbox. Make sure it's on the same network as Home Assistant.",
+        "description": "Enter the IP address of your Voitas Wallbox.",
         "data": {
           "host": "IP Address",
           "port": "UDP Port (default: 43000)"
@@ -11,17 +11,30 @@
       },
       "power": {
         "title": "Charging Power Source",
-        "description": "Choose how charging power is determined. This is used to calculate energy (kWh).",
+        "description": "How should the charging power be determined?",
         "data": {
-          "power_source": "Power Source",
-          "power_value": "Fixed Power (kW)",
-          "power_entity": "HA Entity (e.g. car charging sensor)"
+          "power_source": "Power Source"
+        }
+      },
+      "power_manual": {
+        "title": "Fixed Charging Power",
+        "description": "Enter the typical charging power of your wallbox in kW.",
+        "data": {
+          "power_value": "Charging Power (kW)"
+        }
+      },
+      "power_entity": {
+        "title": "HA Power Entity",
+        "description": "Select the sensor that reports the current charging power in kW (e.g. from your car integration).",
+        "data": {
+          "power_entity": "Power Sensor Entity"
         }
       }
     },
     "error": {
-      "cannot_connect": "Could not receive data from the Wallbox. Make sure the IP is correct and the device is on.",
-      "invalid_host": "Invalid IP address."
+      "cannot_connect": "Could not receive data from the Wallbox. Check the IP and make sure it's on the same network.",
+      "invalid_host": "Invalid IP address.",
+      "entity_required": "Please select a power entity."
     },
     "abort": {
       "already_configured": "This Wallbox is already configured."

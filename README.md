@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Voitas Wallbox — Home Assistant Integration
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
@@ -102,3 +103,6 @@ Found more fields in the protocol? Open an issue or PR!
 ---
 
 *Reverse-engineered with ❤️ — for the Voitas community.*
+=======
+# Voitas-Walbox-HA-Integration
+>>>>>>> cc55071da33416811c9570e0de30c74b8be49c3b

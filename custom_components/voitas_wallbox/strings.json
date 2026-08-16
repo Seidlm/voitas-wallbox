@@ -10,31 +10,17 @@
         }
       },
       "power": {
-        "title": "Charging Power Source",
-        "description": "How should the charging power be determined?",
+        "title": "Charging Power",
+        "description": "Enter a fallback charging power in kW, and optionally link an entity (e.g. your car's charging power sensor). When linked, the entity value is used whenever it reports a valid value; the fallback value is used otherwise (e.g. entity unavailable) and when no entity is linked.",
         "data": {
-          "power_source": "Power Source"
-        }
-      },
-      "power_manual": {
-        "title": "Fixed Charging Power",
-        "description": "Enter the typical charging power of your wallbox in kW.",
-        "data": {
-          "power_value": "Charging Power (kW)"
-        }
-      },
-      "power_entity": {
-        "title": "HA Power Entity",
-        "description": "Select the sensor that reports the current charging power in kW (e.g. from your car integration).",
-        "data": {
-          "power_entity": "Power Sensor Entity"
+          "power_value": "Fallback Charging Power (kW)",
+          "power_entity": "Power Sensor Entity (optional)"
         }
       }
     },
     "error": {
       "cannot_connect": "Could not receive data from the Wallbox. Check the IP and make sure it's on the same network.",
-      "invalid_host": "Invalid IP address.",
-      "entity_required": "Please select a power entity."
+      "invalid_host": "Invalid IP address."
     },
     "abort": {
       "already_configured": "This Wallbox is already configured."

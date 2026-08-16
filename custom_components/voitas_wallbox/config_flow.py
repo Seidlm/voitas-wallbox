@@ -14,11 +14,9 @@ from .const import (
     DEFAULT_PORT,
     CONF_HOST,
     CONF_PORT,
-    CONF_POWER_SOURCE,
     CONF_POWER_VALUE,
     CONF_POWER_ENTITY,
-    POWER_SOURCE_MANUAL,
-    POWER_SOURCE_ENTITY,
+    DEFAULT_POWER_VALUE,
 )
 
 
@@ -87,28 +85,12 @@ class VoitasWallboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_power(self, user_input=None):
-        """Step 1 of power config: choose source."""
-        if user_input is not None:
-            self._power_source = user_input[CONF_POWER_SOURCE]
-            if self._power_source == POWER_SOURCE_MANUAL:
-                return await self.async_step_power_manual()
-            else:
-                return await self.async_step_power_entity()
+        """Configure fallback power value and optional linked entity together.
 
-        return self.async_show_form(
-            step_id="power",
-            data_schema=vol.Schema({
-                vol.Required(CONF_POWER_SOURCE, default=POWER_SOURCE_MANUAL): selector.SelectSelector(
-                    selector.SelectSelectorConfig(options=[
-                        selector.SelectOptionDict(value=POWER_SOURCE_MANUAL, label="Manuell (kW eingeben)"),
-                        selector.SelectOptionDict(value=POWER_SOURCE_ENTITY, label="HA Entity (z.B. Audi Sensor)"),
-                    ])
-                ),
-            }),
-        )
-
-    async def async_step_power_manual(self, user_input=None):
-        """Enter fixed kW value."""
+        The static value is always required (used when no entity is linked,
+        or as fallback when the linked entity is unknown/unavailable). The
+        entity is optional and takes priority whenever it reports a valid value.
+        """
         if user_input is not None:
             await self.async_set_unique_id(self._host)
             self._abort_if_unique_id_configured()
@@ -117,53 +99,26 @@ class VoitasWallboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data={
                     CONF_HOST: self._host,
                     CONF_PORT: self._port,
-                    CONF_POWER_SOURCE: POWER_SOURCE_MANUAL,
-                    CONF_POWER_VALUE: user_input.get(CONF_POWER_VALUE, 11.0),
+                    CONF_POWER_VALUE: user_input.get(CONF_POWER_VALUE, DEFAULT_POWER_VALUE),
+                    CONF_POWER_ENTITY: user_input.get(CONF_POWER_ENTITY, ""),
                 },
             )
 
         return self.async_show_form(
-            step_id="power_manual",
+            step_id="power",
             data_schema=vol.Schema({
-                vol.Required(CONF_POWER_VALUE, default=11.0): selector.NumberSelector(
+                vol.Required(CONF_POWER_VALUE, default=DEFAULT_POWER_VALUE): selector.NumberSelector(
                     selector.NumberSelectorConfig(
                         min=1.0, max=22.0, step=0.1, unit_of_measurement="kW"
                     )
                 ),
-            }),
-        )
-
-    async def async_step_power_entity(self, user_input=None):
-        """Select HA entity for charging power."""
-        errors = {}
-
-        if user_input is not None:
-            if not user_input.get(CONF_POWER_ENTITY):
-                errors[CONF_POWER_ENTITY] = "entity_required"
-            else:
-                await self.async_set_unique_id(self._host)
-                self._abort_if_unique_id_configured()
-                return self.async_create_entry(
-                    title=f"Voitas Wallbox ({self._host})",
-                    data={
-                        CONF_HOST: self._host,
-                        CONF_PORT: self._port,
-                        CONF_POWER_SOURCE: POWER_SOURCE_ENTITY,
-                        CONF_POWER_ENTITY: user_input[CONF_POWER_ENTITY],
-                    },
-                )
-
-        return self.async_show_form(
-            step_id="power_entity",
-            data_schema=vol.Schema({
-                vol.Required(CONF_POWER_ENTITY): selector.EntitySelector(
+                vol.Optional(CONF_POWER_ENTITY): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="sensor",
                         device_class="power",
                     )
                 ),
             }),
-            errors=errors,
         )
 
     @classmethod
@@ -173,78 +128,41 @@ class VoitasWallboxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class VoitasWallboxOptionsFlow(config_entries.OptionsFlow):
-    """Options flow — change power source after setup."""
+    """Options flow — change fallback value / linked entity after setup."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         super().__init__()
         self._config_entry = config_entry
-        self._power_source = config_entry.data.get(CONF_POWER_SOURCE, POWER_SOURCE_MANUAL)
 
     async def async_step_init(self, user_input=None):
-        """Choose power source."""
-        if user_input is not None:
-            self._power_source = user_input[CONF_POWER_SOURCE]
-            if self._power_source == POWER_SOURCE_MANUAL:
-                return await self.async_step_manual()
-            else:
-                return await self.async_step_entity()
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=vol.Schema({
-                vol.Required(CONF_POWER_SOURCE, default=self._power_source): selector.SelectSelector(
-                    selector.SelectSelectorConfig(options=[
-                        selector.SelectOptionDict(value=POWER_SOURCE_MANUAL, label="Manuell (kW eingeben)"),
-                        selector.SelectOptionDict(value=POWER_SOURCE_ENTITY, label="HA Entity (z.B. Audi Sensor)"),
-                    ])
-                ),
-            }),
-        )
-
-    async def async_step_manual(self, user_input=None):
-        current = self._config_entry.data.get(CONF_POWER_VALUE, 11.0)
+        """Edit fallback power value and optional linked entity together."""
+        current_value = self._config_entry.data.get(CONF_POWER_VALUE, DEFAULT_POWER_VALUE)
+        current_entity = self._config_entry.data.get(CONF_POWER_ENTITY, "")
 
         if user_input is not None:
             return self.async_create_entry(data={
                 **self._config_entry.data,
-                CONF_POWER_SOURCE: POWER_SOURCE_MANUAL,
-                CONF_POWER_VALUE: user_input[CONF_POWER_VALUE],
+                CONF_POWER_VALUE: user_input.get(CONF_POWER_VALUE, DEFAULT_POWER_VALUE),
+                CONF_POWER_ENTITY: user_input.get(CONF_POWER_ENTITY, ""),
             })
 
-        return self.async_show_form(
-            step_id="manual",
-            data_schema=vol.Schema({
-                vol.Required(CONF_POWER_VALUE, default=current): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=1.0, max=22.0, step=0.1, unit_of_measurement="kW"
-                    )
-                ),
-            }),
-        )
-
-    async def async_step_entity(self, user_input=None):
-        errors = {}
-        current = self._config_entry.data.get(CONF_POWER_ENTITY, "")
-
-        if user_input is not None:
-            if not user_input.get(CONF_POWER_ENTITY):
-                errors[CONF_POWER_ENTITY] = "entity_required"
-            else:
-                return self.async_create_entry(data={
-                    **self._config_entry.data,
-                    CONF_POWER_SOURCE: POWER_SOURCE_ENTITY,
-                    CONF_POWER_ENTITY: user_input[CONF_POWER_ENTITY],
-                })
+        schema = {
+            vol.Required(CONF_POWER_VALUE, default=current_value): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=1.0, max=22.0, step=0.1, unit_of_measurement="kW"
+                )
+            ),
+        }
+        if current_entity:
+            schema[vol.Optional(CONF_POWER_ENTITY, default=current_entity)] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="power")
+            )
+        else:
+            schema[vol.Optional(CONF_POWER_ENTITY)] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="power")
+            )
 
         return self.async_show_form(
-            step_id="entity",
-            data_schema=vol.Schema({
-                vol.Required(CONF_POWER_ENTITY, default=current): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        domain="sensor",
-                        device_class="power",
-                    )
-                ),
-            }),
-            errors=errors,
+            step_id="init",
+            data_schema=vol.Schema(schema),
         )

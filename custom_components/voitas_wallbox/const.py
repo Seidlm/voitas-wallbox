@@ -6,12 +6,14 @@ DEFAULT_SCAN_INTERVAL = 1  # seconds
 
 CONF_HOST = "host"
 CONF_PORT = "port"
-CONF_POWER_SOURCE = "power_source"
+# Fallback/static kW value — always used when no entity is configured,
+# or as fallback when the linked entity is unknown/unavailable.
 CONF_POWER_VALUE = "power_value"
+# Optional linked entity (e.g. car's charging power sensor). Takes priority
+# over the static value whenever it reports a valid numeric state.
 CONF_POWER_ENTITY = "power_entity"
 
-POWER_SOURCE_MANUAL = "manual"
-POWER_SOURCE_ENTITY = "entity"
+DEFAULT_POWER_VALUE = 11.0
 
 # UDP Protocol fields
 # WALLBOX-LD <proto> <uuid> <status> <field4> <max_power_w> <min_current_ma> <interval_ms>

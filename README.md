@@ -131,7 +131,7 @@ WALLBOX-LD 3 74c777d2-807e-4a9f-ba83-d606130065f3 charging 0 20000 2000 600
 
 This integration listens for these broadcasts and exposes the data as Home Assistant entities. No polling, no cloud, no authentication required.
 
-> **Note on charging power:** The UDP broadcast does not include the actual charging power in watts. To track energy consumption (kWh), you can either enter a fixed power value or connect a sensor from your car's HA integration (e.g. Audi, Volkswagen) that reports the live charging power.
+> **Note on charging power:** The UDP broadcast does not include the actual charging power in watts. To track energy consumption (kWh), configure a fallback kW value and optionally link a sensor from your car's HA integration (e.g. Audi, Volkswagen) that reports the live charging power. The linked entity is used whenever it reports a valid value; the fallback value is used otherwise (entity unavailable/unknown, or no entity linked).
 
 ---
 
@@ -139,7 +139,7 @@ This integration listens for these broadcasts and exposes the data as Home Assis
 
 - 📡 **Local push** — UDP broadcast, near real-time (~600ms), no polling
 - 🔌 **Charging status** — `idle` / `charging`
-- ⚡ **Charging power** — from a fixed kW value or any HA power sensor (e.g. your car)
+- ⚡ **Charging power** — linked HA power sensor (e.g. your car) with automatic fallback to a fixed kW value when the entity is unavailable
 - 🔋 **Energy (kWh)** — calculated via time integration, compatible with HA Energy Dashboard
 - ⏱️ **Session duration** — minutes since charging started, resets when done
 - 📊 **Last session summary** — duration + kWh of the previous charge stored as attributes
@@ -169,14 +169,13 @@ This integration listens for these broadcasts and exposes the data as Home Assis
 ### Step 1 — Wallbox IP
 Enter the local IP address of your Voitas V11 (e.g. `192.168.1.149`). The integration will listen for UDP broadcasts on port **43000** and verify connectivity before proceeding.
 
-### Step 2 — Power Source
+### Step 2 — Charging Power
 
-| Option | When to use |
-|--------|-------------|
-| **Manual (kW)** | Enter a fixed value matching your wallbox configuration (e.g. `11.0` kW) |
-| **HA Entity** | Select a sensor from your car integration that reports live charging power in kW |
+Enter a **fallback charging power (kW)** — used whenever no entity is linked, or when the linked entity is unavailable/unknown. Optionally also select a **power sensor entity** (e.g. from your car integration, such as Audi/Volkswagen) that reports the live charging power in kW — this takes priority whenever it reports a valid value.
 
-### Changing the power source later
+This is a fallback chain, not either/or: both values can be configured at once, and the integration automatically picks the best available source.
+
+### Changing the power configuration later
 Go to **Settings → Devices & Services → Voitas Wallbox → ⋮ → Configure**
 
 ---
@@ -218,7 +217,9 @@ Add `sensor.*_energy` to your HA Energy Dashboard under **Individual devices**.
 
 **Sensors show `unavailable`** → No UDP packet for 30s — check network connectivity
 
-**Energy shows 0** → Configure a power source (manual kW or car entity in kW)
+**Energy shows 0** → Configure a fallback power value and/or link a car power entity (kW)
+
+**Charging Power shows unavailable while linked entity is offline** → Fixed in 1.4.0 — the sensor now falls back to the static kW value automatically instead of going unavailable/stale.
 
 ---
 

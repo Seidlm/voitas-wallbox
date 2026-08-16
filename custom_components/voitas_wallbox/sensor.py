@@ -17,11 +17,9 @@ import homeassistant.util.dt as dt_util
 
 from .const import (
     DOMAIN,
-    CONF_POWER_SOURCE,
     CONF_POWER_VALUE,
     CONF_POWER_ENTITY,
-    POWER_SOURCE_MANUAL,
-    POWER_SOURCE_ENTITY,
+    DEFAULT_POWER_VALUE,
     STATUS_CHARGING,
 )
 from .coordinator import VoitasWallboxCoordinator
@@ -43,12 +41,11 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: VoitasWallboxCoordinator = hass.data[DOMAIN][entry.entry_id]
-    power_source = entry.data.get(CONF_POWER_SOURCE, POWER_SOURCE_MANUAL)
-    power_value = entry.data.get(CONF_POWER_VALUE, 11.0)
+    power_value = entry.data.get(CONF_POWER_VALUE, DEFAULT_POWER_VALUE)
     power_entity = entry.data.get(CONF_POWER_ENTITY, "")
 
     status_sensor = VoitasStatusSensor(coordinator, entry)
-    power_sensor = VoitasPowerSensor(coordinator, entry, power_source, power_value, power_entity)
+    power_sensor = VoitasPowerSensor(coordinator, entry, power_value, power_entity)
     energy_sensor = VoitasEnergySensor(coordinator, entry, power_sensor)
     # Fix #7: SessionDurationSensor reads from coordinator (single source of truth)
     duration_sensor = VoitasSessionDurationSensor(coordinator, entry)
@@ -108,7 +105,13 @@ class VoitasStatusSensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEnti
 
 
 class VoitasPowerSensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEntity):
-    """Sensor for current charging power in kW."""
+    """Sensor for current charging power in kW.
+
+    Priority (fallback chain, not either/or):
+    1. Not charging → 0.0
+    2. Linked entity configured AND reports a valid numeric state → entity value
+    3. Otherwise (no entity configured, or entity unknown/unavailable) → static fallback value
+    """
 
     _attr_has_entity_name = True
     _attr_name = "Charging Power"
@@ -116,11 +119,10 @@ class VoitasPowerSensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEntit
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_native_unit_of_measurement = UnitOfPower.KILO_WATT
 
-    def __init__(self, coordinator, entry, power_source, power_value, power_entity):
+    def __init__(self, coordinator, entry, power_value, power_entity):
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_power"
         self._entry = entry
-        self._power_source = power_source
         self._power_value = power_value
         self._power_entity = power_entity
         self._entity_power: float | None = None
@@ -131,7 +133,7 @@ class VoitasPowerSensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEntit
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        if self._power_source == POWER_SOURCE_ENTITY and self._power_entity:
+        if self._power_entity:
             self.async_on_remove(
                 async_track_state_change_event(
                     self.hass,
@@ -149,19 +151,24 @@ class VoitasPowerSensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEntit
     @callback
     def _handle_entity_state_change(self, event) -> None:
         new_state = event.data.get("new_state")
-        if new_state and new_state.state not in ("unknown", "unavailable"):
-            try:
-                self._entity_power = float(new_state.state)
-                self.async_write_ha_state()
-            except ValueError:
-                pass
+        if new_state is None or new_state.state in ("unknown", "unavailable"):
+            # Entity dropped out — clear cached value so native_value falls
+            # back to the static value instead of showing a stale reading.
+            self._entity_power = None
+            self.async_write_ha_state()
+            return
+        try:
+            self._entity_power = float(new_state.state)
+            self.async_write_ha_state()
+        except ValueError:
+            pass
 
     @property
     def native_value(self) -> float:
         if self.coordinator.current_data.status != STATUS_CHARGING:
             return 0.0
-        if self._power_source == POWER_SOURCE_ENTITY:
-            return self._entity_power or 0.0
+        if self._power_entity and self._entity_power is not None:
+            return self._entity_power
         return self._power_value
 
     @property

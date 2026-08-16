@@ -1,6 +1,9 @@
 """Sensors for Voitas Wallbox."""
 from __future__ import annotations
 
+import logging
+from dataclasses import dataclass
+
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -11,7 +14,7 @@ from homeassistant.const import UnitOfPower, UnitOfEnergy
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
-from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.restore_state import ExtraStoredData, RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 import homeassistant.util.dt as dt_util
 
@@ -23,6 +26,8 @@ from .const import (
     STATUS_CHARGING,
 )
 from .coordinator import VoitasWallboxCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _device_info(coordinator, entry):
@@ -176,11 +181,32 @@ class VoitasPowerSensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEntit
         return self.coordinator.current_data.available
 
 
+@dataclass
+class VoitasEnergyExtraData(ExtraStoredData):
+    """Internal snapshot of accumulated energy — survives even if the last
+    visible HA state was "unavailable" (e.g. right after an integration
+    reload while the coordinator was mid-timeout).
+    """
+
+    energy_kwh: float = 0.0
+
+    def as_dict(self) -> dict:
+        return {"energy_kwh": self.energy_kwh}
+
+    @classmethod
+    def from_dict(cls, restored: dict) -> "VoitasEnergyExtraData":
+        try:
+            return cls(energy_kwh=float(restored.get("energy_kwh", 0.0)))
+        except (TypeError, ValueError):
+            return cls(energy_kwh=0.0)
+
+
 class VoitasEnergySensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEntity, RestoreEntity):
     """Sensor for total energy delivered (kWh) — calculated via time integration.
 
     - TOTAL_INCREASING: HA Energy Dashboard calculates daily/monthly automatically
-    - RestoreEntity + extra_restore_state_data: survives HA restarts (Fix #3/#10)
+    - RestoreEntity + extra stored data: survives HA restarts AND integration
+      reloads, even when the last visible state was "unavailable" (Fix #3/#10/#11)
     - Only accumulates when power > 0 (Fix idle phantom consumption)
     """
 
@@ -203,16 +229,39 @@ class VoitasEnergySensor(CoordinatorEntity[VoitasWallboxCoordinator], SensorEnti
     def device_info(self):
         return _device_info(self.coordinator, self._entry)
 
+    @property
+    def extra_restore_state_data(self) -> VoitasEnergyExtraData:
+        return VoitasEnergyExtraData(energy_kwh=self._energy_kwh)
+
     async def async_added_to_hass(self) -> None:
-        """Restore last known energy value after HA restart."""
+        """Restore last known energy value after HA restart or integration reload.
+
+        Fix #11: Prefer our own extra stored data (always a valid float,
+        persisted on every update) over the raw last HA state. The raw state
+        can legitimately be "unavailable" right after a reload/timeout, which
+        previously reset accumulated energy to 0 and caused a NaN/dip in the
+        Energy Dashboard statistics mid-session.
+        """
         await super().async_added_to_hass()
-        if (last_state := await self.async_get_last_state()) is not None:
+
+        restored = False
+        if (extra := await self.async_get_last_extra_data()) is not None:
+            try:
+                data = VoitasEnergyExtraData.from_dict(extra.as_dict())
+                self._energy_kwh = data.energy_kwh
+                restored = True
+                _LOGGER.debug("Voitas: restored %.4f kWh from extra data", self._energy_kwh)
+            except Exception as err:  # noqa: BLE001 - defensive, fall through to state restore
+                _LOGGER.debug("Voitas: failed to restore extra data: %s", err)
+
+        if not restored and (last_state := await self.async_get_last_state()) is not None:
             if last_state.state not in ("unknown", "unavailable", "None", None):
                 try:
                     self._energy_kwh = float(last_state.state)
-                    _LOGGER.debug("Voitas: restored %.4f kWh", self._energy_kwh)
+                    _LOGGER.debug("Voitas: restored %.4f kWh from last state", self._energy_kwh)
                 except (ValueError, TypeError):
                     self._energy_kwh = 0.0
+
         self._last_update = dt_util.utcnow()
 
     @callback

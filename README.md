@@ -221,6 +221,8 @@ Add `sensor.*_energy` to your HA Energy Dashboard under **Individual devices**.
 
 **Charging Power shows unavailable while linked entity is offline** → Fixed in 1.4.0 — the sensor now falls back to the static kW value automatically instead of going unavailable/stale.
 
+**Energy shows "NaN kWh" or resets to 0 after reloading the integration** → Fixed in 1.4.1 — previously, if the Energy sensor's last visible state happened to be `unavailable` (e.g. right after a coordinator timeout), a reload would reset accumulated energy to 0, causing a dip/NaN in Energy Dashboard statistics mid-session. The sensor now persists its own internal value across reloads/restarts independently of the last visible state.
+
 ---
 
 ## Technical details
